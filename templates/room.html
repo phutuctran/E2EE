@@ -1,6 +1,6 @@
 {% extends 'base.html' %} {% block content %}
 <div class="message-box">
-  <h2>Chat Room: {{code}}</h2>
+  <h2>Chat Room</h2>
   <div class="messages" id="messages"></div>
   <div class="inputs">
     <input
@@ -34,23 +34,44 @@
     messages.innerHTML += content;
   };
 
+  const createMessage2 = (msg) => {
+    const content = `
+    <div class="text">
+        <span>
+            ${msg}
+        </span>
+        <span class="muted">
+            ${new Date().toLocaleString()}
+        </span>
+    </div>
+    `;
+    messages.innerHTML += content;
+  };
+
   socketio.on("message", (data) => {
     createMessage(data.name, data.message);
   });
 
-  socketio.on("public_key", (data) => {
-    const EncodepublicKey = data.public_key;
-    var raw_public_key = atob(EncodepublicKey);
-    console.log(`Received public key: ${raw_public_key}`);
-    createMessage("test", raw_public_key);
+  socketio.on("receive", (data) => {
+    createMessage2(data.message);
   });
 
   const sendMessage = () => {
-    const message = document.getElementById("message");
-    if (message.value == "") return;
-    socketio.emit("message", { data: message.value });
-    message.value = "";
-  };
+  const messageInput = document.getElementById("message");
+  if (!messageInput) {
+    console.error("Message input element not found.");
+    return;
+  }
+
+  const messageValue = messageInput.value;
+  if (messageValue === "") {
+    console.warn("Message is empty.");
+    return;
+  }
+
+  socketio.emit("message", { message: messageValue });
+  messageInput.value = "";
+};
 </script>
 {% for msg in messages %}
 <script type="text/javascript">

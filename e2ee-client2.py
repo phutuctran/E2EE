@@ -1,6 +1,9 @@
 import socket
 import threading
+import requests
 import rsa
+import eventlet
+eventlet.monkey_patch()
 from flask import Flask, render_template, request, redirect, session, url_for
 from flask_socketio import SocketIO
 
@@ -27,13 +30,13 @@ def receiving_messages():
             public_partner = rsa.PublicKey.load_pkcs1(client.recv(1024))
         else:
             message = rsa.decrypt(client.recv(1024), private_key).decode()
-            print (message)
+            messageformat = message.split(":")
+            socketio.emit("message", {"name": messageformat[0], "message": messageformat[1]})
 
-def sending_messages():
+            
+def sending_messages(message):
     global client, public_partner, myname
-    while True:
-        message = input("")
-        client.send(rsa.encrypt(f"{myname}: {message}".encode(), public_partner))
+    client.send(rsa.encrypt(f"{myname}: {message}".encode(), public_partner))
 
 @app.route("/", methods = ["POST", "GET"])
 def index():
@@ -46,14 +49,22 @@ def index():
 
         myname = name
         connect_to_host()
+        #socketio.start_background_task(target=receiving_messages)
         receivie_thread = threading.Thread(target=receiving_messages, args=()).start()
-        send_thread = threading.Thread(target=sending_messages, args=()).start()
-
+        #send_thread = threading.Thread(target=sending_messages, args=()).start()
+        # eventlet.spawn(receiving_messages())
 
 
 
         return render_template("room.html", code=None)
     return render_template("index.html")
 
+@socketio.on('message')
+def handle_message(data):
+    sending_messages(data["message"])
+    message = data["message"]
+    socketio.emit("message", {"name": myname, "message": message})
+
 if __name__ == "__main__":
     socketio.run(app,port = 5001, debug=True)
+    # socketio.start_background_task(target=receiving_messages)
