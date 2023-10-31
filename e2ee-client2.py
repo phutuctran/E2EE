@@ -10,7 +10,7 @@ from flask_socketio import SocketIO
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "e2ee123"
 PORT = 9999
-server_ip = "172.17.23.30"
+server_ip = "192.168.88.198"
 socketio = SocketIO(app)
 
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -53,10 +53,11 @@ def index():
         receivie_thread = threading.Thread(target=receiving_messages, args=()).start()
         #send_thread = threading.Thread(target=sending_messages, args=()).start()
         # eventlet.spawn(receiving_messages())
-
-
-
-        return render_template("room.html", code=None)
+        data = {
+            'name': myname,
+            'ip': server_ip
+        }
+        return render_template("room.html", data=data, code=None)
     return render_template("index.html")
 
 @socketio.on('message')

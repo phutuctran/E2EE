@@ -1,34 +1,49 @@
 {% extends 'base.html' %} {% block content %}
-<div class="message-box">
-  <h2>Chat Room</h2>
-  <div class="messages" id="messages"></div>
-  <div class="inputs">
-    <input
-      type="text"
-      rows="3"
-      placeholder="Message"
-      name="message"
-      id="message"
-    />
-    <button type="button" name="send" id="send-btn" onClick="sendMessage()">
-      Send
-    </button>
+<div hidden id="username">{{data.name}}</div>
+<div class="container-fluid" style="height: 100px;">
+  <div class="row justify-content-center" style="height: 100px;">
+    <div class="card" style="height: 700px;">
+      <div class="card-header msg_head">
+        <div class="d-flex bd-highlight">
+          <div class="img_cont">
+            <img src="/static/img/1.jpg" class="rounded-circle user_img">
+            <span class="online_icon"></span>
+          </div>
+          <div class="user_info">
+            <span>Room's IP: {{data.ip}}</span>
+          </div>
+        </div>
+      </div>
+      <div class="card-body msg_card_body" id="messagearea"></div>
+      <div class="card-footer">
+        <div class="input-group">
+          <textarea name="" class="form-control type_msg" placeholder="Type your message..." id="message"></textarea>
+          <div class="input-group-append">
+            <span class="input-group-text send_btn" onclick="sendMessage()"><i class="fas fa-location-arrow"></i></span>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
+
+
 <script type="text/javascript">
   var socketio = io();
 
-  const messages = document.getElementById("messages");
-
+  const messages = document.getElementById("messagearea");
+  const username = document.getElementById("username").textContent;
   const createMessage = (name, msg) => {
     const content = `
-    <div class="text">
-        <span>
-            <strong>${name}</strong>: ${msg}
-        </span>
-        <span class="muted">
-            ${new Date().toLocaleString()}
-        </span>
+    <div class="d-flex justify-content-start mb-4">
+      <div class="img_cont_msg">
+        <img src="/static/img/2.jpg" class="rounded-circle user_img_msg">
+      </div>
+
+      <div class="msg_cotainer">
+        ${msg}
+        <span class="msg_time">    ${name}</span>
+      </div>
     </div>
     `;
     messages.innerHTML += content;
@@ -36,25 +51,30 @@
 
   const createMessage2 = (msg) => {
     const content = `
-    <div class="text">
-        <span>
-            ${msg}
-        </span>
-        <span class="muted">
-            ${new Date().toLocaleString()}
-        </span>
+    <div class="d-flex justify-content-end mb-4">
+      <div class="msg_cotainer_send">
+        <span class="msg_time_send"></span>
+        ${msg}
+      </div>
+      <div class="img_cont_msg">
+    <img src="/static/img/3.jpg" class="rounded-circle user_img_msg">
+      </div>
     </div>
     `;
     messages.innerHTML += content;
   };
 
   socketio.on("message", (data) => {
-    createMessage(data.name, data.message);
+    if (data.name === username)
+    {
+      createMessage2(data.message);
+    }
+    else
+    {
+      createMessage(data.name, data.message);
+    }
   });
 
-  socketio.on("receive", (data) => {
-    createMessage2(data.message);
-  });
 
   const sendMessage = () => {
   const messageInput = document.getElementById("message");
