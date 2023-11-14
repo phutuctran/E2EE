@@ -1,5 +1,6 @@
 import socket
 import threading
+from time import sleep
 import requests
 import rsa
 import eventlet
@@ -10,13 +11,17 @@ from flask_socketio import SocketIO
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "e2ee123"
 PORT = 9999
-server_ip = "192.168.88.198"
+server_ip = "172.30.54.172"
 socketio = SocketIO(app)
 
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 public_key, private_key = rsa.newkeys(1024)
+tamper_public_key, tamper_private_key = rsa.newkeys(1024)
+print(public_key)
+print(private_key)
 public_partner = None
 myname = None
+
 
 def connect_to_host():
     client.connect((server_ip, PORT))
@@ -29,14 +34,33 @@ def receiving_messages():
         if(public_partner == None):
             public_partner = rsa.PublicKey.load_pkcs1(client.recv(1024))
         else:
-            message = rsa.decrypt(client.recv(1024), private_key).decode()
+            received_data = client.recv(1024)
+            try:
+                message = received_data.decode()
+            except:
+                message = rsa.decrypt(received_data, private_key).decode()
+                sign = client.recv(1024)
+                try:
+                    rsa.verify(message.encode(), sign, public_partner)
+                except:
+                    socketio.emit("message", {"name": 'CẢNH BÁO', "message": 'ĐOẠN CHAT CỦA BẠN ĐANG BỊ XÂM NHẬP'})
+                    break
             messageformat = message.split(":")
             socketio.emit("message", {"name": messageformat[0], "message": messageformat[1]})
 
-            
+
 def sending_messages(message):
     global client, public_partner, myname
-    client.send(rsa.encrypt(f"{myname}: {message}".encode(), public_partner))
+    message_to_send = f"{myname}: {message}"
+    if("mật khẩu" in message):
+        client.send(rsa.encrypt(message_to_send.encode(), public_partner))
+        client.send(rsa.sign(message_to_send.encode(), private_key, 'SHA-1'))
+    elif("tamper" in message):
+        client.send(rsa.encrypt(message_to_send.encode(), public_partner))
+        client.send(rsa.sign(message_to_send.encode(), tamper_private_key, 'SHA-1'))
+    else:
+        client.send(f"{myname}: {message}".encode())
+
 
 @app.route("/", methods = ["POST", "GET"])
 def index():
@@ -50,14 +74,15 @@ def index():
         myname = name
         connect_to_host()
         #socketio.start_background_task(target=receiving_messages)
-        receivie_thread = threading.Thread(target=receiving_messages, args=()).start()
+        receivie_thread = threading.Thread(target=receiving_messages, args=())
+        receivie_thread.start()
         #send_thread = threading.Thread(target=sending_messages, args=()).start()
         # eventlet.spawn(receiving_messages())
         data = {
             'name': myname,
             'ip': server_ip
         }
-        return render_template("room.html", data=data, code=None)
+        return render_template("room2.html", data=data, code=None)
     return render_template("index.html")
 
 @socketio.on('message')
